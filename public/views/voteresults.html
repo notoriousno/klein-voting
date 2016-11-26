@@ -1,0 +1,42 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Vote Results</title>
+    <script src="/public/javascript/jquery-3.1.1.min.js"></script>
+    <script>
+    function voteResults(){
+        // make request
+        var request = $.ajax({
+            url: "/vote/results",
+            method: "GET",
+            dataType: "json"
+        });
+        request.done(function (response){
+            var total = 0;
+            var $results = $("#div-results");
+            for(var i = 0; i < response.length; i++){
+                var votes = response[i].votes;
+                var name = response[i].name;
+                total += votes;
+                $results.append("<div><span style='padding-right: 12%;'>" + votes.toString() + "</span><span>" + name + "</span></div>");
+            };
+
+            var $totals = $("#span-total");
+            $totals.append(total);
+        });
+    };
+    </script>
+</head>
+<body onload="voteResults();">
+
+<h1>Vote Results</h1>
+
+<div>
+    <div id="div-results">
+    </div>
+    <br>
+    <span id="span-total"></span>
+</div>
+
+</body>
+</html>

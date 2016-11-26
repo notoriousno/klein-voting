@@ -1,0 +1,37 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Add Candidate</title>
+    <script src="/public/javascript/jquery-3.1.1.min.js"></script>
+    <script>
+    function addCandidate(candidate){
+        // disable submit button
+        $("#btn-submit").attr("disabled", "");
+
+        // create endpoint URL
+        url = "/add/candidate/" + candidate;
+
+        // make request
+        var request = $.ajax({
+            url: url,
+            method: "POST",
+            dataType: "json"
+        });
+        request.done(function(response){
+            $("#btn-submit").removeAttr("disabled");
+        });
+    };
+    </script>
+</head>
+<body onload="">
+
+<h1>Add Candidate</h1>
+
+<div>
+    Candidate: <input id="candidate">
+    <br>
+    <button id="btn-submit" onclick="addCandidate($('#candidate').val())">SUBMIT</button>
+</div>
+
+</body>
+</html>
