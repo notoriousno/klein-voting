@@ -11,6 +11,11 @@ class ICandidates(Interface):
         Insert a candidate into the candidates table.
         """
 
+    def get_candidate_by_id(candidate_id):
+        """
+        Retrieve a single candidate record via the candidate id number.
+        """
+
     def all_candidates():
         """
         Get all candidate records.
