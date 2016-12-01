@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import unicode_literals
 from os import path
 import sys
@@ -8,11 +10,51 @@ try:
     from unittest.mock import MagicMock
 except ImportError:
     from mock import MagicMock
+from itertools import chain
 from twisted.internet.defer import gatherResults
 from twisted.trial.unittest import TestCase
 from zope.interface.verify import verifyClass
-from database import Database, Candidates, Votes
+from database import Database, Candidates, Validations, Votes
 from interfaces import ICandidates, IVotes
+
+class TestValidations(TestCase):
+    validate = Validations()
+
+    def test_get_candidate_by_id(self):
+        for i in range(0, 10000, 100):
+            self.validate.validate_candidate_id(i)
+
+    def test_get_candidate_by_id_not_int(self):
+        invalid_ids = ['100', 1.0, 0.0]
+        for invalid in invalid_ids:
+            self.assertRaises(AssertionError, self.validate.validate_candidate_id, invalid)
+
+    def test_negative_candidate_ids(self):
+        for invalid in chain([x for x in range(-1000, 0, 100)], [y for y in range(-10, 0)]):
+            self.assertRaises(AssertionError, self.validate.validate_candidate_id, invalid)
+
+    def test_name_too_short(self):
+        name = ''
+        self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
+
+    def test_name_too_long(self):
+        name = 'abcdefghijklmnopqrstuvwxyz'
+        self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
+
+    def test_invalid_name_input(self):
+        invalids = ['', '#klein', '"klein"', "'klein'", 'kle*in', 'klein;', '!@#$%^&*()-=_+', 'k13!n']
+        for name in invalids:
+            self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
+
+    def test_unicode_name(self):
+        unicode_names = ['فحسب', 'да', '他們爲什', 'qué', 'מדברים', 'Varför', 'Türkçe', 'ইঞ']
+        for name in unicode_names:
+            self.validate.validate_candidate_name(name)
+
+    def test_invalid_with_unicode(self):
+        invalids = ['#берегу', 'm!foé']
+        for name in invalids:
+            self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
 
 class TestDatabase(TestCase):
     pass
@@ -42,7 +84,6 @@ class TestCandidates(TestCase):
     def test_get_candidate_by_id(self):
         expected_result = (1, 'Mickey Mouse')
         self.db.execute.return_value = [expected_result]        # return a mocked query
-        self.candidates = Candidates(self.db)
 
         candidate_id = 100
         d = self.candidates.get_candidate_by_id(candidate_id)   # inlineCallbacks returns a Deferred
@@ -61,7 +102,6 @@ class TestCandidates(TestCase):
 
     def test_get_candidate_by_id_empty_query(self):
         self.db.execute.return_value = []       # this is unnecessary but demonstrates the expected function result
-        self.candidates = Candidates(self.db)
         d = self.candidates.get_candidate_by_id(100)
 
         @d.addCallback
