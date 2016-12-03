@@ -106,6 +106,8 @@ class TestDatabase(TestCase):
         query_stmt = 'select key, name from %s where key=%d' % (table_name, key)
         cursor.execute(query_stmt)
         assert cursor.fetchone() == (key, name)
+        
+    test_real_database.skip = 'Tests using real db has too much overhead. Also, pytest has issues with inlineCallbacks.'
 
     def remove_test_files(self, *file_paths):
         from os import remove
