@@ -22,37 +22,45 @@ class TestValidations(TestCase):
     validate = Validations()
 
     def test_get_candidate_by_id(self):
+        """ Validate id are positive integers """
         for i in range(0, 10000, 100):
             self.validate.validate_candidate_id(i)
 
     def test_get_candidate_by_id_not_int(self):
+        """ Only integers are allowed, other types raise exception """
         invalid_ids = ['100', 1.0, 0.0]
         for invalid in invalid_ids:
             self.assertRaises(AssertionError, self.validate.validate_candidate_id, invalid)
 
     def test_negative_candidate_ids(self):
+        """ Validate negative integers raise exception """
         for invalid in chain([x for x in range(-1000, 0, 100)], [y for y in range(-10, 0)]):
             self.assertRaises(AssertionError, self.validate.validate_candidate_id, invalid)
 
     def test_name_too_short(self):
+        """ Candidate names must be > 0 """
         name = ''
         self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
 
     def test_name_too_long(self):
+        """ Candidate names must be <= 25 """
         name = 'abcdefghijklmnopqrstuvwxyz'
         self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
 
     def test_invalid_name_input(self):
+        """ Validate names with special characters or numbers raise an exception """
         invalids = ['', '#klein', '"klein"', "'klein'", 'kle*in', 'klein;', '!@#$%^&*()-=_+', 'k13!n']
         for name in invalids:
             self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
 
     def test_unicode_name(self):
+        """ Validate unicode (utf-8) """
         unicode_names = ['فحسب', 'да', '他們爲什', 'qué', 'מדברים', 'Varför', 'Türkçe', 'ইঞ']
         for name in unicode_names:
             self.validate.validate_candidate_name(name)
 
     def test_invalid_with_unicode(self):
+        """ Validate unicode + numbers raise exception """
         invalids = ['#берегу', 'm!foé']
         for name in invalids:
             self.assertRaises(AssertionError, self.validate.validate_candidate_name, name)
@@ -61,6 +69,10 @@ class TestDatabase(TestCase):
 
     @patch('twisted.enterprise.adbapi.ConnectionPool')
     def test_mocked_database(self, ConnectionPool):
+        """
+        There's modest evidence suggesting ConnectionPool is very well tested.
+        So the object can be mocked.
+        """
         dbpool = ConnectionPool('db_module', 'db_uri', *(), **{})
         db = Database(dbpool)
 
@@ -76,6 +88,7 @@ class TestDatabase(TestCase):
 
     @inlineCallbacks
     def test_real_database(self):
+        """ Test using a real connection to a database """
         from os import path
         import sqlite3
 
@@ -110,6 +123,7 @@ class TestDatabase(TestCase):
     test_real_database.skip = 'Tests using real db has too much overhead. Also, pytest has issues with inlineCallbacks.'
 
     def remove_test_files(self, *file_paths):
+        """ Remove unnecessary files """
         from os import remove
         for file_path in file_paths:
             remove(file_path)
@@ -123,55 +137,77 @@ class TestCandidates(TestCase):
         self.candidates = Candidates(self.db)
 
     def test_contract(self):
-        assert verifyClass(ICandidates, Candidates)
+        """ Validate interface contract is fulfilled """
+        assert verifyClass(ICandidates, Candidates), 'ICandidates contract not fulfilled'
 
     def test_create_table(self):
+        """ Validate the create table syntax gets called by the database object """
         self.candidates.create_table()
         sql_stmt = 'create table %s (id integer primary key, name text unique not null)' % (self.table_name)
         self.db.execute.assert_called_with(sql_stmt)
 
     def test_add_candidate(self):
+        """ Validate appropriate insert syntax is called with proper name """
         candidate = 'Kanye West'
         self.candidates.add_candidate(candidate)
         insert_stmt = "insert into %s (name) values ('%s')" % (self.table_name, candidate)
         self.db.execute.assert_called_with(insert_stmt)
 
     def test_get_candidate_by_id(self):
-        expected_result = (1, 'Mickey Mouse')
-        self.db.execute.return_value = [expected_result]        # return a mocked query
-
+        """
+        Get candidate by id value. This function returns a Deferred which 
+        requires a different way of testing than most are accustomed to.
+        2 success callbacks are chained to the Deferred and will execute after 
+        the get_candidate_by_id function completes. It's in those callbacks 
+        when results can be compared and verify that certain functions were 
+        called. Final note, if Deferreds are being waited on, then the Deferred
+        MUST be returned at the end of the function.
+        """
         candidate_id = 100
+        expected_result = (candidate_id, 'Mickey Mouse')
+        self.db.execute.return_value = [expected_result]        # return a mocked query
         d = self.candidates.get_candidate_by_id(candidate_id)   # inlineCallbacks returns a Deferred
 
         @d.addCallback
         def verify_results(result, expected=expected_result):
+            """ Verify actual result and expected results are the same """
             assert result == expected
-            return None
 
         @d.addCallback
-        def verify_function_calls(prev_results):
+        def verify_function_calls(null):
+            """ Verify correct SQL statement was executed """
             expected_sql_stmt = 'select id, name from %s where id=%d' % (self.table_name, candidate_id)
             self.db.execute.assert_called_with(expected_sql_stmt)
 
         return d    # wait for the Deferreds to finish
 
-    def test_get_candidate_by_id_empty_query(self):
+    def test_get_candidate_by_id_candidate_does_not_exist(self):
+        """ Validate exception is raised when a candidate doesn't exist in the database. """
         self.db.execute.return_value = []       # this is unnecessary but demonstrates the expected function result
         d = self.candidates.get_candidate_by_id(100)
 
         @d.addCallback
         def unexpected_success(result):
+            """
+            If success callback is executed than the function ran with no errors
+            which in this case is not the intended outcome.
+            """
             raise Exception('Unexpected success')
 
         @d.addErrback
         def verify_failure(failure):
+            """ Verify correct exception is raised """
             exception = failure.value
             assert isinstance(exception, IndexError)
-            assert str(exception) == 'No result found.'
+            assert str(exception) == 'No candidate found.'
 
         return d
 
     def test_get_candidate_by_id_not_int(self):
+        """
+        The get_candidate_by_id() function only accepts integers/longs.
+        Verify all other types raise an exception.
+        """
         invalid_ids = ['100', 1.0, 0.0]
         deferred_list = []
 
@@ -190,13 +226,14 @@ class TestCandidates(TestCase):
 
         for invalid_id in invalid_ids:
             d = self.candidates.get_candidate_by_id(invalid_id)
-            d.addCallback(unexpected_success, invalid_id)
-            d.addErrback(verify_failure)
-            deferred_list.append(d)
+            d.addCallback(unexpected_success, invalid_id)   # if the success callback is run, then the function didn't work as intended
+            d.addErrback(verify_failure)        # an error should occur in the Deferred function and start the error chain
+            deferred_list.append(d)         # append Deferred to a list so that all the Deferred results can be gathered at on time
 
-        return gatherResults(deferred_list)
+        return gatherResults(deferred_list)     # wait for all the Deferreds to finish running
 
     def test_get_candidate_by_id_lt_0(self):
+        """ Verify integers < 0 raise exception """
         invalid_ids = [-100, -1]
         deferred_list = []
 
@@ -222,18 +259,22 @@ class TestCandidates(TestCase):
         return gatherResults(deferred_list)
 
     def test_all_candidates(self):
+        """ Validate proper SQL syntax is executed to query for all records. """
         self.candidates.all_candidates()
         select_stmt = 'select id, name from %s' % (self.table_name)
 
     def test_add_name_too_long(self):
+        """ Verify names length >= 25 raise exception """
         name = 'abcdefghijklmnopqrstuvwxyz'
         self.assertRaises(AssertionError, self.candidates.add_candidate, name)
 
     def test_add_name_too_short(self):
+        """ Verify names length == 0 raise exception """
         name = ''
         self.assertRaises(AssertionError, self.candidates.add_candidate, name)
 
     def test_invalid_name_input(self):
+        """ Verify invalid names raise exception """
         invalids = ['', '#klein', '"klein"', "'klein'", 'kle*in', 'klein;', '!@#$%^&*()-=_+', 'k13!n']
         for item in invalids:
             self.assertRaises(AssertionError, self.candidates.add_candidate, item)
@@ -249,7 +290,7 @@ class TestVotes(TestCase):
         self.votes = Votes(self.db, self.candidates)
 
     def test_contract(self):
-        assert verifyClass(IVotes, Votes)
+        assert verifyClass(IVotes, Votes), 'IVotes contract not fulfilled'
 
     def test_create_table(self):
         self.votes.create_table()
@@ -294,5 +335,5 @@ class TestVotes(TestCase):
         @d.addErrback
         def verify_exception(failure):
             exception = failure.value
-            assert isinstance(exception, IndexError)
+            assert isinstance(exception, IndexError), 'Incorrect exception raised'
             assert str(exception) == 'Candidate id is not present.'

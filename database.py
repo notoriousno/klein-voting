@@ -62,7 +62,7 @@ class Candidates(object):
         query_stmt = 'select id, name from %s where id=%d' % (self.table_name, candidate_id)
         query = yield self.db.execute(query_stmt)
         if len(query) == 0:
-            raise IndexError('No result found.')
+            raise IndexError('No candidate found.')
         defer.returnValue(query[0])
 
     def all_candidates(self):
