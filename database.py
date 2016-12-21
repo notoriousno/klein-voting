@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from __future__ import unicode_literals
 from numbers import Integral
 import re
@@ -10,14 +8,14 @@ from interfaces import ICandidates, IVotes
 
 class Validations(object):
     def validate_candidate_id(self, candidate_id):
-        assert isinstance(candidate_id, Integral), 'Candidate id must be an integer.'
-        assert candidate_id >= 0, 'Candidate id must be greater than 0.'
+        assert isinstance(candidate_id, Integral), 'Candidate id must be an integer'
+        assert candidate_id >= 0, 'Candidate id must be greater than 0'
 
     def validate_candidate_name(self, name):
         for substr in name.split(' '):
-            assert substr.isalpha(), "Only UTF-8 compliant text permitted in a candidate's name."
+            assert substr.isalpha(), "Only UTF-8 compliant text permitted in a candidate's name"
         name_length = len(name)
-        assert name_length > 0 and name_length <= 25, 'Candidate length must be between 1-25.'
+        assert name_length > 0 and name_length <= 25, 'Candidate length must be between 1-25'
 
 class Database(object):
     def __init__(self, dbpool):
@@ -62,7 +60,7 @@ class Candidates(object):
         query_stmt = 'select id, name from %s where id=%d' % (self.table_name, candidate_id)
         query = yield self.db.execute(query_stmt)
         if len(query) == 0:
-            raise IndexError('No candidate found.')
+            raise IndexError('No candidate found')
         defer.returnValue(query[0])
 
     def all_candidates(self):
@@ -93,7 +91,7 @@ class Votes(object):
         if len(query) == 0:
             query_candidates = yield self.candidates.get_candidate_by_id(candidate_id)
             if len(query_candidates) == 0:
-                raise IndexError('Candidate id is not present.')    # candidate doesn't exist
+                raise IndexError('Candidate id is not present')     # candidate doesn't exist
 
             # insert candidate id into votes table
             insert_stmt = "insert into %s (candidate, votes) values (%d, 1)" % (self.table_name, candidate_id)

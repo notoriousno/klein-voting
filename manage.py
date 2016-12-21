@@ -73,6 +73,6 @@ if __name__=='__main__':
         runserver(
             dbpath=cli['db'],
             host=cli['host'],
-            port=cli['port'],
+            port=int(cli['port']),
             logpath=cli['logpath'])
 

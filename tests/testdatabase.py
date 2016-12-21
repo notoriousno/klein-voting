@@ -199,7 +199,7 @@ class TestCandidates(TestCase):
             """ Verify correct exception is raised """
             exception = failure.value
             assert isinstance(exception, IndexError)
-            assert str(exception) == 'No candidate found.'
+            assert str(exception) == 'No candidate found'
 
         return d
 
@@ -218,7 +218,7 @@ class TestCandidates(TestCase):
             """
             exception = failure.value       # get the exception object
             assert isinstance(exception, AssertionError), '{} != AssertionError'.format(repr(exception))
-            assert str(exception) == 'Candidate id must be an integer.'
+            assert str(exception) == 'Candidate id must be an integer'
 
         def unexpected_success(result, passing_value):
             msg = 'Unexpected success of candidate_id: {0}'.format(passing_value)
@@ -244,7 +244,7 @@ class TestCandidates(TestCase):
             """
             exception = failure.value
             assert isinstance(exception, AssertionError), '{} != AssertionError'.format(repr(exception))
-            assert str(exception) == 'Candidate id must be greater than 0.'
+            assert str(exception) == 'Candidate id must be greater than 0'
 
         def unexpected_success(result, passing_value):
             msg = 'Unexpected success of candidate_id: {0}'.format(passing_value)
@@ -336,4 +336,4 @@ class TestVotes(TestCase):
         def verify_exception(failure):
             exception = failure.value
             assert isinstance(exception, IndexError), 'Incorrect exception raised'
-            assert str(exception) == 'Candidate id is not present.'
+            assert str(exception) == 'Candidate id is not present'
