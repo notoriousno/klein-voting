@@ -303,7 +303,7 @@ class TestVotes(TestCase):
         votes = 100
         record = (candidate_id, 'Candidate Name', votes)
         # mock a method call, devs MUST keep the expected results up-to-date!
-        self.votes.candidate_record = MagicMock(return_value = [record])
+        self.votes.vote_total = MagicMock(return_value = [record])
 
         d = self.votes.vote_for(candidate_id)
         @d.addCallback
@@ -324,7 +324,7 @@ class TestVotes(TestCase):
             self.db.execute.assert_called_with(sql_stmt)
 
     def test_vote_for_candidate_not_exist(self):
-        self.votes.candidate_record = MagicMock(return_value = [])
+        self.votes.vote_total = MagicMock(return_value = [])
         self.candidates.get_candidate_by_id.return_value = []
 
         d = self.votes.vote_for(1000000)

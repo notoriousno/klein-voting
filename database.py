@@ -85,7 +85,7 @@ class Votes(object):
 
     @defer.inlineCallbacks
     def vote_for(self, candidate_id):
-        query = yield self.candidate_record(candidate_id)   # query for the candidate
+        query = yield self.vote_total(candidate_id)     # query for the candidate
 
         # verify candidate exists or insert
         if len(query) == 0:
@@ -103,13 +103,13 @@ class Votes(object):
         update_stmt = "update %s set votes=%d where candidate=%d" % (self.table_name, votes, candidate_id)
         yield self.db.execute(update_stmt)
 
-    def candidate_record(self, candidate_id):
+    def vote_total(self, candidate_id):
         stmt = "select c.id, c.name, v.votes " \
             "from %s as v join %s as c on v.candidate=c.id "\
             "where c.id=%d" % (self.table_name, self.candidates.table_name, candidate_id)
         return self.db.execute(stmt)
 
-    def vote_totals(self):
+    def all_vote_totals(self):
         stmt = "select c.id, c.name, v.votes " \
             "from %s as v join %s as c on v.candidate=c.id" % (self.table_name, self.candidates.table_name)
         return self.db.execute(stmt)

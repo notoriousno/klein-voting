@@ -32,12 +32,12 @@ class IVotes(Interface):
         Add a single vote for a candidate.
         """
 
-    def candidate_record(candidate_id):
+    def vote_total(candidate_id):
         """
         Get a record for a candidate, which will return id, candidate name, and number of votes.
         """
 
-    def vote_totals():
+    def all_vote_totals():
         """
         Get all the candidate records.
         """
