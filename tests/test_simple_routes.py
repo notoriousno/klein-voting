@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
-#from os import path
-#import sys
-#filepath = path.split(path.split(path.realpath(__file__))[0])[0]
-#sys.path.append(filepath)   # add project directory to Python path
 
 try:
     from unittest.mock import MagicMock

@@ -25,12 +25,34 @@ class VoteApi(object):
 
     @jsonify.route('/candidates', methods=['GET'])
     def get_candidates(self, request):
+        """
+        Get a list of candidates.
+
+        :return: `{candidates: []}`
+        """
         d = self.candidates.all_candidates()
+        @d.addCallback
+        def db_to_json(results):
+            """
+            Encapsulate the db results to JSON.
+            """
+            candidates = []
+            for record in results:
+                record_id, name = record
+                candidates.append(
+                    {'id': record_id, 'name': name})
+            return {'candidates': candidates}
+
         d.addErrback(self.database_failure, request)
         return d
 
     @jsonify.route('/candidate', methods=['POST'])
     def add_candidate(self, request):
+        """
+        Add a candidate to the system.
+
+        :param candidate: Name of a candidate.
+        """
         if b'candidate' not in request.args:
             request.setResponseCode(412)
             return {'status': 'Missing Prerequisite Input'}
@@ -41,6 +63,11 @@ class VoteApi(object):
         return d
 
     def database_failure(self, failure, request):
+        """
+        Return a generic message to users that an error occurred during or
+        after dealing with the database. Generally a good spot to capture
+        the exact exception from `failure.value`.
+        """
         request.setResponseCode(400)
         return {'status': 'Database Issue'}
 
