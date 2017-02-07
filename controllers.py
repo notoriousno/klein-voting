@@ -30,7 +30,7 @@ class VoteApi(object):
 
         :return: `{candidates: []}`
         """
-        d = self.candidates.all_candidates()
+        d = self.votes.all_vote_totals()
         @d.addCallback
         def db_to_json(results):
             """
@@ -38,9 +38,13 @@ class VoteApi(object):
             """
             candidates = []
             for record in results:
-                record_id, name = record
-                candidates.append(
-                    {'id': record_id, 'name': name})
+                record_id, name, votes = record
+                if votes is None:
+                    votes = 0
+                candidates.append({
+                    'id': record_id,
+                    'name': name,
+                    'votes': votes})
             return {'candidates': candidates}
 
         d.addErrback(self.database_failure, request)

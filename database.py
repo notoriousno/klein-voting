@@ -111,5 +111,5 @@ class Votes(object):
 
     def all_vote_totals(self):
         stmt = "select c.id, c.name, v.votes " \
-            "from %s as v join %s as c on v.candidate=c.id" % (self.table_name, self.candidates.table_name)
+            "from %s as c left outer join %s as v on v.candidate=c.id" % (self.candidates.table_name, self.table_name)
         return self.db.execute(stmt)

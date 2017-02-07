@@ -45,7 +45,7 @@ class KleinResourceTester(object):
         content = yield readBody(response)
         self.content = content.decode(self.encoding)
         self.status_code = response.code
-        self.headers = response.headers
+        self.getHeaders = response.headers.getRawHeaders
         defer.returnValue(response)
 
 class TestVoteAPI(TestCase):
@@ -62,16 +62,21 @@ class TestVoteAPI(TestCase):
         """
         """
         d = defer.Deferred()
-        self.candidates.all_candidates.return_value = d
-        values = [(1, 'Batman'), (2, 'Superman')]
+        self.votes.all_vote_totals.return_value = d
+        values = [
+            (1, 'Batman', None),
+            (2, 'Spiderman', 1),
+            (3, 'Superman', 100)]
         d.callback(values)
 
         response = self.client.request('GET', '/api/candidates')
         @response.addCallback
         def verify(ignored):
             self.assertEquals(self.client.status_code, 200)
-            content = self.client.content
-            assert len(values) == len(json.loads(content)['candidates'])
-            content_type = self.client.headers.getRawHeaders('Content-Type', [None])[0]
+            content_type = self.client.getHeaders('Content-Type', [None])[0]
+
+            content = json.loads(self.client.content)
+            assert len(values) == len(content['candidates'])
+            # @TODO Validate each record w/ values
 
         return response
