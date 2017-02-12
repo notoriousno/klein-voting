@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
-from os import path
-import sys
-filepath = path.split(path.split(path.realpath(__file__))[0])[0]
-sys.path.append(filepath)   # add project directory to Python path
 
 try:
     from unittest.mock import MagicMock, patch
@@ -68,12 +64,12 @@ class TestValidations(TestCase):
 class TestDatabase(TestCase):
 
     @patch('twisted.enterprise.adbapi.ConnectionPool')
-    def test_mocked_database(self, ConnectionPool):
+    def test_mocked_database(self, conn_pool):
         """
         There's modest evidence suggesting ConnectionPool is very well tested.
         So the object can be mocked.
         """
-        dbpool = ConnectionPool('db_module', 'db_uri', *(), **{})
+        dbpool = conn_pool('db_module', 'db_uri', *(), **{})
         db = Database(dbpool)
 
         # query
@@ -119,7 +115,7 @@ class TestDatabase(TestCase):
         query_stmt = 'select key, name from %s where key=%d' % (table_name, key)
         cursor.execute(query_stmt)
         assert cursor.fetchone() == (key, name)
-        
+
     test_real_database.skip = 'Tests using real db has too much overhead. Also, pytest has issues with inlineCallbacks.'
 
     def remove_test_files(self, *file_paths):
@@ -176,7 +172,8 @@ class TestCandidates(TestCase):
         @d.addCallback
         def verify_function_calls(null):
             """ Verify correct SQL statement was executed """
-            expected_sql_stmt = 'select id, name from %s where id=%d' % (self.table_name, candidate_id)
+            expected_sql_stmt = 'select id, name from %s where id=%d' % (
+                self.table_name, candidate_id)
             self.db.execute.assert_called_with(expected_sql_stmt)
 
         return d    # wait for the Deferreds to finish
@@ -199,7 +196,7 @@ class TestCandidates(TestCase):
             """ Verify correct exception is raised """
             exception = failure.value
             assert isinstance(exception, IndexError)
-            assert str(exception) == 'No candidate found.'
+            assert str(exception) == 'No candidate found'
 
         return d
 
@@ -218,7 +215,7 @@ class TestCandidates(TestCase):
             """
             exception = failure.value       # get the exception object
             assert isinstance(exception, AssertionError), '{} != AssertionError'.format(repr(exception))
-            assert str(exception) == 'Candidate id must be an integer.'
+            assert str(exception) == 'Candidate id must be an integer'
 
         def unexpected_success(result, passing_value):
             msg = 'Unexpected success of candidate_id: {0}'.format(passing_value)
@@ -244,7 +241,7 @@ class TestCandidates(TestCase):
             """
             exception = failure.value
             assert isinstance(exception, AssertionError), '{} != AssertionError'.format(repr(exception))
-            assert str(exception) == 'Candidate id must be greater than 0.'
+            assert str(exception) == 'Candidate id must be greater than 0'
 
         def unexpected_success(result, passing_value):
             msg = 'Unexpected success of candidate_id: {0}'.format(passing_value)
@@ -257,11 +254,6 @@ class TestCandidates(TestCase):
             deferred_list.append(d)
 
         return gatherResults(deferred_list)
-
-    def test_all_candidates(self):
-        """ Validate proper SQL syntax is executed to query for all records. """
-        self.candidates.all_candidates()
-        select_stmt = 'select id, name from %s' % (self.table_name)
 
     def test_add_name_too_long(self):
         """ Verify names length >= 25 raise exception """
@@ -303,7 +295,7 @@ class TestVotes(TestCase):
         votes = 100
         record = (candidate_id, 'Candidate Name', votes)
         # mock a method call, devs MUST keep the expected results up-to-date!
-        self.votes.candidate_record = MagicMock(return_value = [record])
+        self.votes.vote_total = MagicMock(return_value=[record])
 
         d = self.votes.vote_for(candidate_id)
         @d.addCallback
@@ -324,7 +316,7 @@ class TestVotes(TestCase):
             self.db.execute.assert_called_with(sql_stmt)
 
     def test_vote_for_candidate_not_exist(self):
-        self.votes.candidate_record = MagicMock(return_value = [])
+        self.votes.vote_total = MagicMock(return_value=[])
         self.candidates.get_candidate_by_id.return_value = []
 
         d = self.votes.vote_for(1000000)
@@ -336,4 +328,6 @@ class TestVotes(TestCase):
         def verify_exception(failure):
             exception = failure.value
             assert isinstance(exception, IndexError), 'Incorrect exception raised'
-            assert str(exception) == 'Candidate id is not present.'
+            assert str(exception) == 'Candidate id is not present'
+
+        return d

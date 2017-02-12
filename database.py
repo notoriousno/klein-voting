@@ -1,23 +1,20 @@
-# -*- coding: utf-8 -*-
-
 from __future__ import unicode_literals
 from numbers import Integral
 import re
 from twisted.internet import defer
-from twisted.enterprise.adbapi import ConnectionPool
 from zope.interface import implementer
 from interfaces import ICandidates, IVotes
 
 class Validations(object):
     def validate_candidate_id(self, candidate_id):
-        assert isinstance(candidate_id, Integral), 'Candidate id must be an integer.'
-        assert candidate_id >= 0, 'Candidate id must be greater than 0.'
+        assert isinstance(candidate_id, Integral), 'Candidate id must be an integer'
+        assert candidate_id >= 0, 'Candidate id must be greater than 0'
 
     def validate_candidate_name(self, name):
         for substr in name.split(' '):
-            assert substr.isalpha(), "Only UTF-8 compliant text permitted in a candidate's name."
+            assert substr.isalpha(), "Only UTF-8 compliant text permitted in a candidate's name"
         name_length = len(name)
-        assert name_length > 0 and name_length <= 25, 'Candidate length must be between 1-25.'
+        assert name_length > 0 and name_length <= 25, 'Candidate length must be between 1-25'
 
 class Database(object):
     def __init__(self, dbpool):
@@ -62,11 +59,8 @@ class Candidates(object):
         query_stmt = 'select id, name from %s where id=%d' % (self.table_name, candidate_id)
         query = yield self.db.execute(query_stmt)
         if len(query) == 0:
-            raise IndexError('No candidate found.')
+            raise IndexError('No candidate found')
         defer.returnValue(query[0])
-
-    def all_candidates(self):
-        return self.db.execute('select id, name from %s' % (self.table_name))
 
 @implementer(IVotes)
 class Votes(object):
@@ -82,18 +76,19 @@ class Votes(object):
         stmt = "create table %s (" \
             "candidate int primary key, " \
             "votes int not null, " \
-            "foreign key(candidate) references %s(id))" % (self.table_name, self.candidates.table_name)
+            "foreign key(candidate) references %s(id))" % (
+                self.table_name, self.candidates.table_name)
         return self.db.execute(stmt)
 
     @defer.inlineCallbacks
     def vote_for(self, candidate_id):
-        query = yield self.candidate_record(candidate_id)   # query for the candidate
+        query = yield self.vote_total(candidate_id)     # query for the candidate
 
         # verify candidate exists or insert
         if len(query) == 0:
             query_candidates = yield self.candidates.get_candidate_by_id(candidate_id)
             if len(query_candidates) == 0:
-                raise IndexError('Candidate id is not present.')    # candidate doesn't exist
+                raise IndexError('Candidate id is not present')     # candidate doesn't exist
 
             # insert candidate id into votes table
             insert_stmt = "insert into %s (candidate, votes) values (%d, 1)" % (self.table_name, candidate_id)
@@ -105,13 +100,13 @@ class Votes(object):
         update_stmt = "update %s set votes=%d where candidate=%d" % (self.table_name, votes, candidate_id)
         yield self.db.execute(update_stmt)
 
-    def candidate_record(self, candidate_id):
+    def vote_total(self, candidate_id):
         stmt = "select c.id, c.name, v.votes " \
             "from %s as v join %s as c on v.candidate=c.id "\
             "where c.id=%d" % (self.table_name, self.candidates.table_name, candidate_id)
         return self.db.execute(stmt)
 
-    def vote_totals(self):
+    def all_vote_totals(self):
         stmt = "select c.id, c.name, v.votes " \
-            "from %s as v join %s as c on v.candidate=c.id" % (self.table_name, self.candidates.table_name)
+            "from %s as c left outer join %s as v on v.candidate=c.id" % (self.candidates.table_name, self.table_name)
         return self.db.execute(stmt)
