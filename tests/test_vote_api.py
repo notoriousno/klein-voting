@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 from six import PY3
 
 try:
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import MagicMock
 except ImportError:
-    from mock import MagicMock, patch
+    from mock import MagicMock
 
 if PY3:
     from http.cookiejar import CookieJar
@@ -15,18 +15,17 @@ else:
     from cookielib import CookieJar
     from urllib import urlencode
 
-from io import BytesIO
 import json
 from sys import getdefaultencoding
+
 from klein.resource import ensure_utf8_bytes
 from treq.testing import RequestTraversalAgent, _SynchronousProducer
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase
 from twisted.web.client import CookieAgent, readBody
 from twisted.web.http_headers import Headers
-from controllers import VoteApi
+
 from main import Application
-from middleware import Jsonify
 
 class KleinResourceTester(object):
 
@@ -74,12 +73,15 @@ class TestVoteAPI(TestCase):
     app = Application(database)
 
     def setUp(self):
-        self.client = KleinResourceTester(self.app.router, 'https://example.com')
+        self.client = KleinResourceTester(
+            router = self.app.router,
+            base_url = 'https://example.com')
         self.candidates = self.app.vote_api.candidates = MagicMock()
         self.votes = self.app.vote_api.votes = MagicMock()
 
     def test_get_candidates(self):
         """
+        Get a list of all the candidates
         """
         d = defer.Deferred()
         self.votes.all_vote_totals.return_value = d
@@ -94,6 +96,7 @@ class TestVoteAPI(TestCase):
         def verify(response):
             self.assertEquals(response.code, 200)
             content_type = response.getHeaders('Content-Type')[0]
+            self.assertEquals(content_type, 'application/json')
 
             candidates = json.loads(response.content)['candidates']
             assert len(values) == len(candidates)
@@ -101,6 +104,9 @@ class TestVoteAPI(TestCase):
         return request
 
     def test_get_candidates_no_votes(self):
+        """
+        Candidates that have no votes returns 0
+        """
         d = defer.Deferred()
         self.votes.all_vote_totals.return_value = d
         value = [(1, 'Lex Luther', None)]
@@ -115,8 +121,11 @@ class TestVoteAPI(TestCase):
                 self.assertEquals(candidates['name'], name)
                 self.assertEquals(candidates['votes'], 0)
 
+        return request
+
     def test_add_candidate(self):
         """
+        Add a candidate
         """
         form_data = {'candidate': 'Kal El'}
         request = self.client.request(
@@ -132,8 +141,28 @@ class TestVoteAPI(TestCase):
             content = json.loads(response.content)
             self.assertEquals(content['status'], 'Created')
 
+        return request
+
+    def test_add_candidate_no_name(self):
+        """
+        Error when no candidate name is passed when adding a candidate
+        """
+        request = self.client.request(
+            method = 'POST',
+            uri = '/api/candidate')
+
+        @request.addCallback
+        def verify(response):
+            self.assertEquals(response.code, 412)
+            self.assertEquals(response.getHeaders('Content-Type')[0], 'application/json')
+            content = json.loads(response.content)
+            self.assertEquals(content['status'], 'Missing Prerequisite Input')
+
+        return request
+
     def test_page_not_found(self):
         """
+        Return a particular output when a page/endpoint isn't available.
         """
         request = self.client.request(
             method = 'GET',
@@ -146,18 +175,66 @@ class TestVoteAPI(TestCase):
             content = json.loads(response.content)
             self.assertEquals(content['status'], 'Resource Not Available')
 
+        return request
+
     def test_vote_for(self):
         """
+        Vote for a particular candidate
         """
+        form_data = {'id': 100}
         request = self.client.request(
             method = 'POST',
             uri = '/api/vote',
             headers = {'Content-Type': 'application/x-www-form-urlencoded'},
-            params = {'id': 100})
+            params = form_data)
 
         @request.addCallback
         def verify(response):
             self.assertEquals(response.code, 200)
             self.assertEquals(response.getHeaders('Content-Type')[0], 'application/json')
+            content = json.loads(response.content)
+            self.assertEquals(content['status'], 'Success')
+
+            # verify form data is converting into int
+            # and db functions are properly called
+            args, kwargs = self.votes.vote_for.call_args
+            self.assertIsInstance(args[0], int)
+            self.votes.vote_for.assert_called_with(form_data['id'])
+            self.assertEquals(args[0], form_data['id'])
 
         return request
+
+    def test_vote_for_id_not_int(self):
+        """
+        Status code 412 returned when id is not an int
+        """
+        def invalid_vote(candidate_id):
+            """
+            :return: `Deferred`/`Response`
+            """
+            form_data = {'id': candidate_id}
+            request = self.client.request(
+                method = 'POST',
+                uri = '/api/vote',
+                headers = {'Content-Type': 'application/x-www-form-urlencoded'},
+                params = form_data)
+
+            request.addCallback(verify)
+            return request
+
+        def verify(response):
+            """
+            Verification callback
+            """
+            self.assertEquals(response.code, 412)
+            self.assertEquals(response.getHeaders('Content-Type')[0], 'application/json')
+            content = json.loads(response.content)
+            self.assertEquals(content['status'], 'Invalid User Input')
+
+        invalid_ids = ['one', '1 hundred', '']
+        deferred_list = []
+        for invalid in invalid_ids:
+            d = invalid_vote(invalid)
+            deferred_list.append(d)
+
+        return defer.gatherResults(deferred_list)

@@ -8,6 +8,10 @@ from database import Candidates, Votes
 from middleware import Jsonify
 
 class VoteApi(object):
+    """
+    API that allows users to nominate and vote for candidates in an
+    election.
+    """
 
     router = Klein()
     jsonify = Jsonify(router)
@@ -98,12 +102,14 @@ class VoteApi(object):
             request.setResponseCode(412)
             defer.returnValue({'status': 'Invalid User Input'})
 
-        candidate_id = request.args[b'id']
         try:
+            candidate_id = int(request.args[b'id'][0])
             yield self.votes.vote_for(candidate_id)
-        except IndexError:
-            request.setResponseCode(416)
-            defer.returnValue({'status': 'Invalid Candidate'})
+        except (IndexError, ValueError):
+            # either the id param isn't an int (ValueError)
+            # or the id isn't in the db (IndexError)
+            request.setResponseCode(412)
+            defer.returnValue({'status': 'Invalid User Input'})
         except Exception as error:
             # database error, a good spot to log
             request.setResponseCode(400)
