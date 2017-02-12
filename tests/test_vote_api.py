@@ -145,3 +145,19 @@ class TestVoteAPI(TestCase):
             self.assertEquals(response.getHeaders('Content-Type')[0], 'application/json')
             content = json.loads(response.content)
             self.assertEquals(content['status'], 'Resource Not Available')
+
+    def test_vote_for(self):
+        """
+        """
+        request = self.client.request(
+            method = 'POST',
+            uri = '/api/vote',
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'},
+            params = {'id': 100})
+
+        @request.addCallback
+        def verify(response):
+            self.assertEquals(response.code, 200)
+            self.assertEquals(response.getHeaders('Content-Type')[0], 'application/json')
+
+        return request
