@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 from numbers import Integral
 import re
 from twisted.internet import defer
-from twisted.enterprise.adbapi import ConnectionPool
 from zope.interface import implementer
 from interfaces import ICandidates, IVotes
 
@@ -63,9 +62,6 @@ class Candidates(object):
             raise IndexError('No candidate found')
         defer.returnValue(query[0])
 
-    def all_candidates(self):
-        return self.db.execute('select id, name from %s' % (self.table_name))
-
 @implementer(IVotes)
 class Votes(object):
 
@@ -80,7 +76,8 @@ class Votes(object):
         stmt = "create table %s (" \
             "candidate int primary key, " \
             "votes int not null, " \
-            "foreign key(candidate) references %s(id))" % (self.table_name, self.candidates.table_name)
+            "foreign key(candidate) references %s(id))" % (
+                self.table_name, self.candidates.table_name)
         return self.db.execute(stmt)
 
     @defer.inlineCallbacks

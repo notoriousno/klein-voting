@@ -16,11 +16,6 @@ class ICandidates(Interface):
         Retrieve a single candidate record via the candidate id number.
         """
 
-    def all_candidates():
-        """
-        Get all candidate records.
-        """
-
 class IVotes(Interface):
     def create_table():
         """
