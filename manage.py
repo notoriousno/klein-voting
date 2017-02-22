@@ -8,7 +8,10 @@ from twisted.internet import defer, task
 from database import Database, Candidates, Votes
 from main import Application
 
+
+
 class CLI(Options):
+
 
     optParameters = [
         ['db', 'D', 'votes.sqlite', 'Path to the sqlite database.'],
@@ -17,23 +20,34 @@ class CLI(Options):
         ['logpath', 'L', None, 'File path to log'],
     ]
 
+
     optFlags = [
         ['runserver', 'R', 'Run the Klein application'],
         ['create', 'C', 'Create/Recreate the database'],
     ]
 
+
+
 @defer.inlineCallbacks
 def create_tables(reactor, *models):
+    """
+    Create required database tables
+    """
     for model in models:
         yield model.create_table()
         print('[x] Created the "%s" table' % (model.table_name))
 
+
+
 def create_database(dbpath):
+    """
+    Create or recreate SQLite database then exit
+    """
     dbpool = ConnectionPool('sqlite3', dbpath, check_same_thread=False)
 
     if path.exists(dbpath):
         answer = input('%s already exists. Delete? [yes/no]: ' % (dbpath))
-        if answer.lower() in ['yes','y']:
+        if answer.lower() in ['yes', 'y']:
             remove(dbpath)  # delete old database
         else:
             print('Database will not be created')
@@ -47,7 +61,20 @@ def create_database(dbpath):
     task.react(create_tables, (candidates, votes))
     sys.exit()
 
-def runserver(dbpath, host, port, logpath):
+
+
+def runserver(dbpath, host, port, logpath=None):
+    """
+    Run the web application/server. The Twisted reactor will run so ensure
+    all necessary tasks are started before hand.
+
+    :param host: Hostname, IP address, or interface
+    :type host: `str`
+    :param port: Port number
+    :type port: `int`
+    :param logpath: A path to the log file
+    :type logpath: `str` or `None`
+    """
     dbpool = ConnectionPool('sqlite3', dbpath, check_same_thread=False)
     app = Application(dbpool)
     print('Database: %s' % (dbpath))
@@ -62,7 +89,8 @@ def runserver(dbpath, host, port, logpath):
     app.run(host, port, logfile)
 
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     cli = CLI()
     cli.parseOptions()
 
@@ -75,4 +103,3 @@ if __name__=='__main__':
             host=cli['host'],
             port=int(cli['port']),
             logpath=cli['logpath'])
-
