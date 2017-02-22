@@ -2,20 +2,23 @@
 <head>
     <meta charset="utf-8">
     <title>Add Candidate</title>
-    <script src="/public/javascript/jquery-3.1.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script>
     function addCandidate(candidate){
         // disable submit button
         $("#btn-submit").attr("disabled", "");
 
         // create endpoint URL
-        url = "/add/candidate/" + candidate;
+        url = "/api/candidate";
 
         // make request
         var request = $.ajax({
             url: url,
             method: "POST",
-            dataType: "json"
+            dataType: "json",
+            data: {
+                "candidate": candidate
+            }
         });
         request.done(function(response){
             $("#btn-submit").removeAttr("disabled");

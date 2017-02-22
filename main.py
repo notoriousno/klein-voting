@@ -1,6 +1,7 @@
 import json
 
 from klein import Klein
+from twisted.web.static import File
 
 from controllers import VoteApi
 from database import Database
@@ -25,6 +26,10 @@ class Application(object):
             return json.dumps({'message': message})
         request.setHeader('Content-Type', 'text/html')
         return '<h1>%s</h1>' % (message)
+
+    @router.route('/public/', branch=True)
+    def static_files(self, request):
+        return File('./public')
 
     @router.route('/api', branch=True)
     def vote_rsrc(self, request):

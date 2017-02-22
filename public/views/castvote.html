@@ -2,19 +2,19 @@
 <head>
     <meta charset="utf-8">
     <title>Cast Vote</title>
-    <script src="/public/javascript/jquery-3.1.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script>
     function getCandidates(){
         // make request
         var request = $.ajax({
-            url: "/candidates",
-            method: "GET",
-            dataType: "json"
+            "url": "/api/candidates",
+            "method": "GET",
+            "dataType": "json"
         });
         request.done(function(response){
             var $selector = $("#select-candidates");
 
-            response.forEach(function(item){
+            response.candidates.forEach(function(item){
                 $selector.append("<option>" + item.name + " | " + item.id + "</option>");
             });
         });
@@ -22,12 +22,16 @@
 
     function voteFor(candidate){
         var candidate_id = candidate.split(" | ")[1];
-        var url = "/vote/candidate/" + candidate_id;
+        var url = "/api/vote";
 
         // make request
         var request = $.ajax({
-            url: url,
-            method: "POST",
+            "url": url,
+            "method": "POST",
+            "dataType": "json",
+            "data": {
+                "id": candidate_id
+            }
         });
     };
     </script>
